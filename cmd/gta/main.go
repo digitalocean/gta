@@ -1,6 +1,12 @@
+// Copyright 2016 The gta AUTHORS. All rights reserved.
+//
+// Use of this source code is governed by an Apache 2 license
+// license that can be found in the LICENSE file.
+
 // Command gta uses git to find the subset of code changes from origin/master
 // and then builds the list of go packages that have changed as a result,
 // including all dependent go packages.
+
 package main
 
 import (
