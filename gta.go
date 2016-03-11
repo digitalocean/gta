@@ -41,7 +41,7 @@ func New(opts ...Option) (*GTA, error) {
 }
 
 // DirtyPackages uses the differ and packager to build a list of dirty packages where dirty is defined as "changed".
-func (g *GTA) DirtyPackages() ([]*build.Package, error) {
+func (g *GTA) DirtyPackages(upstream string) ([]*build.Package, error) {
 	if g.differ == nil {
 		return nil, ErrNoDiffer
 	}
@@ -50,7 +50,7 @@ func (g *GTA) DirtyPackages() ([]*build.Package, error) {
 	}
 
 	// get our diff'd directories
-	dirs, err := g.differ.Diff()
+	dirs, err := g.differ.Diff(upstream)
 	if err != nil {
 		return nil, fmt.Errorf("diffing directory for dirty packages, %v", err)
 	}

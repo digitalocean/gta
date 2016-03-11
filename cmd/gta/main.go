@@ -19,13 +19,14 @@ import (
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
 	include := flag.String("include", "", "include a set of comma separated prefixes on the output")
+	upstream := flag.String("upstream", "master", "upstream branch to use for comparison")
 	flag.Parse()
 
 	gt, err := gta.New()
 	if err != nil {
 		log.Fatalf("can't prepare gta: %v", err)
 	}
-	pkgs, err := gt.DirtyPackages()
+	pkgs, err := gt.DirtyPackages(*upstream)
 	if err != nil {
 		log.Fatalf("can't list dirty packages: %v", err)
 	}

@@ -2,6 +2,7 @@ package gta
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -14,7 +15,9 @@ import (
 type Differ interface {
 	// Diff returns a set of absolute pathed directories
 	// that have files that have been modified.
-	Diff() (map[string]bool, error)
+	//
+	// upstream is the upstream branch. In many cases this will be "master".
+	Diff(upstream string) (map[string]bool, error)
 }
 
 // We check to make sure Git implements the Differ interface.
@@ -24,7 +27,7 @@ var _ Differ = &Git{}
 type Git struct{}
 
 // Diff returns a set of changed directories.
-func (g *Git) Diff() (map[string]bool, error) {
+func (g *Git) Diff(upstream string) (map[string]bool, error) {
 	// We get the root of the repository to build our full path.
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -32,7 +35,8 @@ func (g *Git) Diff() (map[string]bool, error) {
 	}
 	root := strings.TrimSpace(string(out))
 
-	cmd := exec.Command("git", "diff", "origin/master...HEAD", "--name-only")
+	ref := fmt.Sprintf("origin/%s...HEAD", upstream)
+	cmd := exec.Command("git", "diff", ref, "--name-only")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
