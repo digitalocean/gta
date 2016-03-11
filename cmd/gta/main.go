@@ -20,7 +20,13 @@ import (
 	"github.com/digitalocean/gta"
 
 	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/tools/go/buildutil"
 )
+
+// We define this so the tooling works with build tags
+func init() {
+	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags", buildutil.TagsFlagDoc)
+}
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.Ltime)
