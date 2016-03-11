@@ -18,7 +18,7 @@ type testDiffer struct {
 	diff map[string]bool
 }
 
-func (t *testDiffer) Diff() (map[string]bool, error) {
+func (t *testDiffer) Diff(string) (map[string]bool, error) {
 	return t.diff, nil
 }
 
@@ -102,7 +102,7 @@ func TestGTA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := gta.DirtyPackages()
+	got, err := gta.DirtyPackages("master")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestNoBuildableGoFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := gta.DirtyPackages()
+	got, err := gta.DirtyPackages("master")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestSpecialCaseDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := gta.DirtyPackages()
+	got, err := gta.DirtyPackages("master")
 	if err != nil {
 		t.Fatal(err)
 	}
