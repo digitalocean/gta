@@ -1,6 +1,8 @@
-gta: go test auto
-================
+# gta: go test auto
+
 ![Cover](gta.jpg)
+
+## Usage
 
 `gta` builds a list of "dirty" (changed) packages from master, using git. This is useful for determining which
 tests to run in larger `monorepo` style repositories.  
@@ -13,3 +15,7 @@ On OSX Yosemite, this is a measily 256, consider raising that maximum to somethi
 ```
 sudo ulimit -n 4096
 ```
+
+## License
+
+This application is distributed under the Apache 2 license found in [LICENSE](LICENSE)
