@@ -1,4 +1,4 @@
-# gta: go test auto
+# gta
 
 ## Overview
 
