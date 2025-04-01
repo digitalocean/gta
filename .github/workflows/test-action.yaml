@@ -55,6 +55,9 @@ jobs:
           git checkout origin/master
           git merge origin/other-feature-branch -m "Merge other-feature-branch into master"
 
+          # Check out the (now dirty) original feature branch
+          git checkout origin/original-feature-branch
+
           echo "Repository setup successful."
 
       - name: Set up Go
