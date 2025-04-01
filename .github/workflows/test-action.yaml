@@ -46,11 +46,8 @@ jobs:
           # Commit the changes
           git commit -m "initial commit"
 
-          # Create origin/master branch to simulate a remote
-          git branch origin/master
-
           # Create a feature branch with changes
-          git checkout -b origin/feature-branch
+          git checkout -b feature-branch
 
           echo "\nconst baz = \"buzz\"\n" >> foo/foo.go
           
@@ -64,6 +61,7 @@ jobs:
         id: gta
         uses: ./
         with:
+          base: "master"
           json: true
 
       - name: Validate output
