@@ -62,6 +62,7 @@ jobs:
       - name: Run GTA Action
         id: gta
         uses: ./
+        working-directory: ./test-repo/src/gtatest      
         with:
           base: "master"
 

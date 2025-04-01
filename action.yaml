@@ -54,12 +54,10 @@ runs:
           changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
         fi
 
-        pwd
-        
-        go run ../../../cmd/gta/main.go \
+        gta \
           -base "${{ inputs.base }}" \
 
-        changed_packages=$(go run ../../../cmd/gta/main.go \
+        changed_packages=$(gta \
           -base "${{ inputs.base }}" \
 
         echo "changed packages:"
