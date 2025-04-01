@@ -26,7 +26,8 @@ jobs:
           echo "Creating repo in ./test-repo"
           mkdir -p ./test-repo/src
           cp -r ./testdata/* ./test-repo/src
-          cd ./test-repo
+
+          cd ./test-repo/src/gtatest
 
           go mod init gta.test
           go mod tidy
@@ -51,7 +52,7 @@ jobs:
           # Create a feature branch with changes
           git checkout -b origin/feature-branch
 
-          echo "\nconst baz = \"buzz\"\n" >> ./src/gtatest/foo/foo.go
+          echo "\nconst baz = \"buzz\"\n" >> /foo/foo.go
           
           git add .
 
