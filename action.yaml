@@ -72,7 +72,7 @@ runs:
 
         echo "changed packages:"
         echo "${changed_packages}"
-        echo "changed_packages=${changed_packages}" >> "${GITHUB_OUTPUT}"
+        echo "changed_packages=${changed_packages}" >> $GITHUB_ENV
 
 outputs:
   changed_packages:
