@@ -47,7 +47,7 @@ runs:
     - name: Run GTA
       shell: bash
       run: |
-        ${GOBIN}/gta \
+        gta \
           --base "${INPUT_BASE:-}" \
           --include "${INPUT_INCLUDE:-}" \
           --merge "${INPUT_MERGE:-}" \
