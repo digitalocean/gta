@@ -40,14 +40,20 @@ jobs:
           # Create origin/master branch to simulate a remote
           git branch origin/master
 
-          # Create origin/feature-branch branch to simulate a non-master remote
-          git checkout -b origin/feature-branch
+          # Create origin/original-feature-branch branch to simulate a non-master remote
+          git branch origin/original-feature-branch origin/master
+
+          # Create another feature branch with changes to be merged to master
+          git checkout -b origin/other-feature-branch
 
           echo "\nconst baz = \"buzz\"\n" >> ./src/gtatest/foo/foo.go
           
           git add .
 
           git commit -m "update pkg foo"
+
+          git checkout origin/master
+          git merge origin/other-feature-branch -m "Merge other-feature-branch into master"
 
           echo "Repository setup successful."
 
