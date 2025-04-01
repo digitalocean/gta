@@ -72,9 +72,7 @@ runs:
 
         echo "changed packages:"
         echo "${changed_packages}"
-        
-        echo "${changed_packages}" > changed_packages.txt
-        echo "::set-output name=changed_packages::$(cat changed_packages.txt)"
+        echo "changed_packages=${changed_packages}" > $GITHUB_OUTPUT
 
 outputs:
   changed_packages:
