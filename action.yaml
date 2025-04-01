@@ -47,6 +47,8 @@ runs:
     - name: Run GTA
       shell: bash
       run: |
+        which gta
+        
         gta \
           -base "${{ inputs.base }}" \
           -include "${{ inputs.include }}" \
