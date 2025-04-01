@@ -54,6 +54,8 @@ runs:
           changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
         fi
 
+        pwd
+        
         go run ../../../cmd/gta/main.go \
           -base "${{ inputs.base }}" \
 
