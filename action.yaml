@@ -49,14 +49,19 @@ runs:
       run: |
         which gta
         
+        changedFilesFlag=""
+        if [[ -n "${{ inputs.changed_files }}" ]]; then
+          changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
+        fi
+
         gta \
           -base "${{ inputs.base }}" \
           -include "${{ inputs.include }}" \
           -merge "${{ inputs.merge }}" \
           -json "${{ inputs.json }}" \
           -buildable-only "${{ inputs.buildable_only }}" \
-          -changed-files "${{ inputs.changed_files }}" \
-          -tags "${{ inputs.tags }}"
+          -tags "${{ inputs.tags }}" \
+          $changedFilesFlag
 
         changed_packages=$(gta \
           -base "${{ inputs.base }}" \
@@ -64,8 +69,8 @@ runs:
           -merge "${{ inputs.merge }}" \
           -json "${{ inputs.json }}" \
           -buildable-only "${{ inputs.buildable_only }}" \
-          -changed-files "${{ inputs.changed_files }}" \
-          -tags "${{ inputs.tags }}")
+          -tags "${{ inputs.tags }}" \
+          $changedFilesFlag
 
         echo "changed packages:"
         echo "${changed_packages}"
