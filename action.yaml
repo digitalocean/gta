@@ -54,8 +54,8 @@ runs:
           -json "${{ inputs.json }}" \
           -buildable-only "${{ inputs.buildable_only }}" \
           -changed-files "${{ inputs.changed_files }}" \
-          -tags "${{ inputs.tags }}
-          
+          -tags "${{ inputs.tags }}"
+
         changed_packages=$(gta \
           -base "${{ inputs.base }}" \
           -include "${{ inputs.include }}" \
@@ -64,6 +64,7 @@ runs:
           -buildable-only "${{ inputs.buildable_only }}" \
           -changed-files "${{ inputs.changed_files }}" \
           -tags "${{ inputs.tags }}")
+
         echo "changed packages:"
         echo "${changed_packages}"
         echo "${changed_packages}" > $GITHUB_OUTPUT

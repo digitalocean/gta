@@ -49,7 +49,7 @@ jobs:
           # Create a feature branch with changes
           git checkout -b feature-branch
 
-          echo "\nconst baz = \"buzz\"\n" >> foo/foo.go
+          echo -e "\nconst baz = \"buzz\"\n" >> foo/foo.go
           
           git add .
 
