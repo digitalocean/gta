@@ -47,6 +47,15 @@ runs:
     - name: Run GTA
       shell: bash
       run: |
+        gta \
+          -base "${{ inputs.base }}" \
+          -include "${{ inputs.include }}" \
+          -merge "${{ inputs.merge }}" \
+          -json "${{ inputs.json }}" \
+          -buildable-only "${{ inputs.buildable_only }}" \
+          -changed-files "${{ inputs.changed_files }}" \
+          -tags "${{ inputs.tags }}
+          
         changed_packages=$(gta \
           -base "${{ inputs.base }}" \
           -include "${{ inputs.include }}" \

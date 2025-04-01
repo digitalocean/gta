@@ -55,6 +55,8 @@ jobs:
 
           git commit -m "update pkg foo"
 
+          git show head
+
           echo "Repository setup successful."
 
       - name: Run GTA Action
