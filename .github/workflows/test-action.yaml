@@ -55,7 +55,7 @@ jobs:
 
           git commit -m "update pkg foo"
 
-          git show head
+          cat foo/foo.go
 
           echo "Repository setup successful."
 
