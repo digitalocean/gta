@@ -16,8 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Create a sample git repository with test data
-      - name: Create Git Repository
+      - name: Setup test git Repository
         run: |
           echo "Creating repo in ./test-repo"
           mkdir -p ./test-repo/src
@@ -42,19 +41,15 @@ jobs:
           git branch origin/master
 
           # Create origin/feature-branch branch to simulate a non-master remote
-          git branch origin/feature-branch
-
-          echo "Repository created successfully."
-      
-      - name: Make changes on feature branch
-        run: |
-          git checkout origin/feature-branch
+          git checkout -b origin/feature-branch
 
           echo "\nconst baz = \"buzz\"\n" >> ./src/foo/foo.go
           
           git add .
 
           git commit -m "update pkg foo"
+
+          echo "Repository setup successful."
 
       - name: Set up Go
         uses: actions/setup-go@v4
