@@ -36,8 +36,8 @@ jobs:
           git init -b master
 
           # Configure Git user and email
-          git config user.email "gtatest@example.com"
-          git config user.name "gta test"
+          git config --global user.email "gtatest@example.com"
+          git config --global user.name "gta test"
 
           # Add a dummy file to the repository
           echo "Initial content" > dummy.txt
