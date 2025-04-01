@@ -56,21 +56,11 @@ runs:
 
         gta \
           -base "${{ inputs.base }}" \
-          -include "${{ inputs.include }}" \
-          -merge "${{ inputs.merge }}" \
           -json "${{ inputs.json }}" \
-          -buildable-only "${{ inputs.buildable_only }}" \
-          -tags "${{ inputs.tags }}" \
-          $changedFilesFlag
 
         changed_packages=$(gta \
           -base "${{ inputs.base }}" \
-          -include "${{ inputs.include }}" \
-          -merge "${{ inputs.merge }}" \
-          -json "${{ inputs.json }}" \
-          -buildable-only "${{ inputs.buildable_only }}" \
-          -tags "${{ inputs.tags }}" \
-          $changedFilesFlag)
+          -json "${{ inputs.json }}")
 
         echo "changed packages:"
         echo "${changed_packages}"
