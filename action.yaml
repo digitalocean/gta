@@ -56,11 +56,9 @@ runs:
 
         gta \
           -base "${{ inputs.base }}" \
-          -json "${{ inputs.json }}" \
 
         changed_packages=$(gta \
           -base "${{ inputs.base }}" \
-          -json "${{ inputs.json }}")
 
         echo "changed packages:"
         echo "${changed_packages}"
