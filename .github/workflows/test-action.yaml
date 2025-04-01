@@ -63,9 +63,9 @@ jobs:
       - name: Run GTA Action
         id: gta
         uses: ./
-        working-directory: ./test-repo/src/gtatest      
         with:
-          base: "master"
+            repo_path: ${{ github.workspace }}/test-repo/src/gtatest
+            base: "master"
 
       - name: Validate output
         run: |

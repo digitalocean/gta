@@ -2,6 +2,9 @@ name: 'GTA'
 description: 'Finds Go packages that have deviated from their upstream source.'
 
 inputs:
+  repo_path:
+    description: 'Path to the repo to check diff of'
+    required: true
   base:
     description: 'Base branch to diff against'
     required: false
@@ -39,6 +42,11 @@ runs:
       with:
         go-version: '1.24'
 
+    - name: Change to the repo path
+      shell: bash
+      run: |
+        cd "${{ inputs.repo_path }}"
+
     - name: Install Go package
       shell: bash
       # todo nickyd: update to current stable version tag
@@ -46,9 +54,7 @@ runs:
 
     - name: Run GTA
       shell: bash
-      run: |
-        which gta
-        
+      run: |        
         changedFilesFlag=""
         if [[ -n "${{ inputs.changed_files }}" ]]; then
           changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
