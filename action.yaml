@@ -31,9 +31,28 @@ inputs:
     required: false
     default: ''
 
-runs:
-  using: 'docker'
-  image: 'Dockerfile'
+    runs:
+      using: "composite"
+      steps:
+        - name: Set up Go
+          uses: actions/setup-go@v4
+          with:
+            go-version: '1.24'
+
+        - name: Install Go package
+          # todo nickyd: update to current stable version tag
+          run: go install github.com/digitalocean/gta/cmd/gta@latest
+
+        - name: Run GTA
+          run: |
+            go run ./cmd/gta/main.go \
+              --base "${INPUT_BASE:-}" \
+              --include "${INPUT_INCLUDE:-}" \
+              --merge "${INPUT_MERGE:-}" \
+              --json "${INPUT_JSON:-}" \
+              --buildable-only "${INPUT_BUILDABLE_ONLY:-}" \
+              --changed-files "${INPUT_CHANGED_FILES:-}" \
+              --tags "${INPUT_TAGS:-}"
 
 outputs:
   changed_packages:
