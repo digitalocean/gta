@@ -40,10 +40,12 @@ runs:
         go-version: '1.24'
 
     - name: Install Go package
+      shell: bash
       # todo nickyd: update to current stable version tag
       run: go install github.com/digitalocean/gta/cmd/gta@latest
 
     - name: Run GTA
+      shell: bash
       run: |
         go run ./cmd/gta/main.go \
           --base "${INPUT_BASE:-}" \
