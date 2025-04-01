@@ -64,7 +64,6 @@ jobs:
         uses: ./
         with:
           base: "master"
-          json: true
 
       - name: Validate output
         run: |
