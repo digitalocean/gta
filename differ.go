@@ -167,10 +167,12 @@ func (g *git) diff() (map[string]struct{}, error) {
 	g.onceDiff.Do(func() {
 		files, err := func() (map[string]struct{}, error) {
 			// We get the root of the repository to build our full path.
-			out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+			cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+			out, err := cmd.CombinedOutput()
 			if err != nil {
 				return nil, err
 			}
+
 			root := strings.TrimSpace(string(out))
 			// get the revision from which HEAD was branched from g.baseBranch.
 			parent1, err := g.branchPointOf("HEAD")
