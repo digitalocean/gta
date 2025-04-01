@@ -43,7 +43,7 @@ jobs:
           # Create origin/feature-branch branch to simulate a non-master remote
           git checkout -b origin/feature-branch
 
-          echo "\nconst baz = \"buzz\"\n" >> ./src/foo/foo.go
+          echo "\nconst baz = \"buzz\"\n" >> ./src/gtatest/foo/foo.go
           
           git add .
 
