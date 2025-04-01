@@ -58,7 +58,7 @@ runs:
         cd "${{ inputs.repo_path }}"
 
         pwd
-        
+
         changedFilesFlag=""
         if [[ -n "${{ inputs.changed_files }}" ]]; then
           changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
@@ -68,7 +68,7 @@ runs:
           -base "${{ inputs.base }}" \
 
         changed_packages=$(gta \
-          -base "${{ inputs.base }}" \
+          -base "${{ inputs.base }}") \
 
         echo "changed packages:"
         echo "${changed_packages}"
