@@ -47,21 +47,21 @@ runs:
     - name: Run GTA
       shell: bash
       run: |
-          echo "debug"
-          echo $INPUT_TAGS
-          echo $INPUT_INCLUDE
-          changed_packages=$(gta \
-            -base "${INPUT_BASE:-}" \
-            -include "${INPUT_INCLUDE:-}" \
-            -merge "${INPUT_MERGE:-}" \
-            -json "${INPUT_JSON:-}" \
-            -buildable-only "${INPUT_BUILDABLE_ONLY:-}" \
-            -changed-files "${INPUT_CHANGED_FILES:-}" \
-            -tags "${INPUT_TAGS:-}")
-          echo "changed packages:"
-          echo "${changed_packages}"
-          echo "${changed_packages}" > $GITHUB_OUTPUT
-          echo "changed_packages=${changed_packages}" >> $GITHUB_ENV
+        echo "debug"
+        echo $INPUT_JSON
+        echo $INPUT_BASE
+        changed_packages=$(gta \
+          -base "${INPUT_BASE:-}" \
+          -include "${INPUT_INCLUDE:-}" \
+          -merge "${INPUT_MERGE:-}" \
+          -json "${INPUT_JSON:-}" \
+          -buildable-only "${INPUT_BUILDABLE_ONLY:-}" \
+          -changed-files "${INPUT_CHANGED_FILES:-}" \
+          -tags "${INPUT_TAGS:-}")
+        echo "changed packages:"
+        echo "${changed_packages}"
+        echo "${changed_packages}" > $GITHUB_OUTPUT
+        echo "changed_packages=${changed_packages}" >> $GITHUB_ENV
 
 outputs:
   changed_packages:
