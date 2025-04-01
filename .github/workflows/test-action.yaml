@@ -40,7 +40,7 @@ jobs:
           git config user.name "gta test"
 
           # Add a dummy file to the repository
-          echo "Initial content" > src/dummy.txt
+          echo "Initial content" > dummy.txt
           git add src
 
           # Commit the changes
