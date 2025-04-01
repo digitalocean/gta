@@ -48,16 +48,16 @@ runs:
       shell: bash
       run: |
         echo "debug"
-        echo $INPUT_JSON
-        echo $INPUT_BASE
+        echo "${{ inputs.json }}"
+        echo "${{ inputs.base }}"
         changed_packages=$(gta \
-          -base "${INPUT_BASE:-}" \
-          -include "${INPUT_INCLUDE:-}" \
-          -merge "${INPUT_MERGE:-}" \
-          -json "${INPUT_JSON:-}" \
-          -buildable-only "${INPUT_BUILDABLE_ONLY:-}" \
-          -changed-files "${INPUT_CHANGED_FILES:-}" \
-          -tags "${INPUT_TAGS:-}")
+          -base "${{ inputs.base }}" \
+          -include "${{ inputs.include }}" \
+          -merge "${{ inputs.merge }}" \
+          -json "${{ inputs.json }}" \
+          -buildable-only "${{ inputs.buildable_only }}" \
+          -changed-files "${{ inputs.changed_files }}" \
+          -tags "${{ inputs.tags }}")
         echo "changed packages:"
         echo "${changed_packages}"
         echo "${changed_packages}" > $GITHUB_OUTPUT
