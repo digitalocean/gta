@@ -45,6 +45,16 @@ jobs:
           git branch origin/feature-branch
 
           echo "Repository created successfully."
+      
+      - name: Make changes on feature branch
+        run: |
+          git checkout origin/feature-branch
+
+          echo "\nconst baz = \"buzz\"\n" >> ./src/foo/foo.go
+          
+          git add .
+
+          git commit -m "update pkg foo"
 
       - name: Set up Go
         uses: actions/setup-go@v4
