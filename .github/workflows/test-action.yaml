@@ -1,0 +1,39 @@
+name: Test GTA Action
+
+on:
+  pull_request:
+    paths:
+      - 'action.yaml'
+      - 'entrypoint.sh'
+      - 'Dockerfile'
+      - '**/*.go'
+
+jobs:
+  test-action:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Run GTA Action
+        id: gta
+        uses: ./
+        with:
+          base: 'origin/main'
+          include: 'example_prefix'
+          merge: 'true'
+          json: 'true'
+          buildable_only: 'false'
+          changed_files: 'example_changed_files.txt'
+          tags: 'example_tag'
+
+      - name: Validate output
+        run: |
+          echo "Changed packages:"
+          echo "${{ steps.gta.outputs.changed_packages }}"

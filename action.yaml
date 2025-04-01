@@ -1,0 +1,42 @@
+name: 'GTA'
+description: 'Finds Go packages that have deviated from their upstream source.'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  inputs:
+    base:
+      description: 'Base branch to diff against'
+      required: false
+      default: 'origin/master'
+    include:
+      description: 'Define changes to be filtered with a set of comma-separated prefixes'
+      required: false
+      default: ''
+    merge:
+      description: 'Diff using the latest merge commit'
+      required: false
+      default: false
+    json:
+      description: 'Output list of changes as JSON'
+      required: false
+      default: false
+    buildable_only:
+      description: 'Keep buildable changed packages only'
+      required: false
+      default: true
+    changed_files:
+      description: 'Path to a file containing a newline-separated list of files that have changed'
+      required: false
+      default: ''
+    tags:
+      description: 'A list of build tags to consider'
+      required: false
+      default: ''
+
+outputs:
+  changed_packages:
+    description: 'A newline-delimited list of packages that have deviated from the given base'
+
+branding:
+  icon: 'package'
+  color: 'blue'
