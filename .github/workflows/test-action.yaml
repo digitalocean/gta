@@ -41,7 +41,7 @@ jobs:
 
           # Add a dummy file to the repository
           echo "Initial content" > dummy.txt
-          git add src
+          git add .
 
           # Commit the changes
           git commit -m "initial commit"
