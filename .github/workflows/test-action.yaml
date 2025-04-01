@@ -13,6 +13,11 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.24
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -22,6 +27,9 @@ jobs:
           mkdir -p ./test-repo/src
           cp -r ./testdata/* ./test-repo/src
           cd ./test-repo
+
+          go mod init gta.test
+          go mod tidy
 
           # Initialize a new Git repository with the master branch
           git init -b master
@@ -40,23 +48,14 @@ jobs:
           # Create origin/master branch to simulate a remote
           git branch origin/master
 
-          # Create origin/original-feature-branch branch to simulate a non-master remote
-          git branch origin/original-feature-branch origin/master
-
-          # Create another feature branch with changes to be merged to master
-          git checkout -b origin/other-feature-branch
+          # Create a feature branch with changes
+          git checkout -b origin/feature-branch
 
           echo "\nconst baz = \"buzz\"\n" >> ./src/gtatest/foo/foo.go
           
           git add .
 
           git commit -m "update pkg foo"
-
-          git checkout origin/master
-          git merge origin/other-feature-branch -m "Merge other-feature-branch into master"
-
-          # Check out the (now dirty) original feature branch
-          git checkout origin/original-feature-branch
 
           echo "Repository setup successful."
 
