@@ -6,6 +6,7 @@ on:
       - 'action.yaml'
       - 'entrypoint.sh'
       - 'Dockerfile'
+      - '.github/workflows/test-action.yaml'
       - '**/*.go'
 
 jobs:
