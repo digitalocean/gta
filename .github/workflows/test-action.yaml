@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "Creating repo in ./test-repo"
           mkdir -p ./test-repo/src
-          cp -r ../testdata/* ./test-repo/src
+          cp -r ./testdata/* ./test-repo/src
           cd ./test-repo
 
           # Initialize a new Git repository with the master branch
