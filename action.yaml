@@ -54,7 +54,11 @@ runs:
 
     - name: Run GTA
       shell: bash
-      run: |        
+      run: |
+        cd "${{ inputs.repo_path }}"
+
+        pwd
+        
         changedFilesFlag=""
         if [[ -n "${{ inputs.changed_files }}" ]]; then
           changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
