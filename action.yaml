@@ -47,6 +47,9 @@ runs:
     - name: Run GTA
       shell: bash
       run: |
+          echo "debug"
+          echo $INPUT_TAGS
+          echo $INPUT_INCLUDE
           changed_packages=$(gta \
             -base "${INPUT_BASE:-}" \
             -include "${INPUT_INCLUDE:-}" \
