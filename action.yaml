@@ -47,9 +47,6 @@ runs:
     - name: Run GTA
       shell: bash
       run: |
-        echo "debug"
-        echo "${{ inputs.json }}"
-        echo "${{ inputs.base }}"
         changed_packages=$(gta \
           -base "${{ inputs.base }}" \
           -include "${{ inputs.include }}" \
