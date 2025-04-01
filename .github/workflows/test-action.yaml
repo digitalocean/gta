@@ -55,7 +55,7 @@ jobs:
 
           git commit -m "update pkg foo"
 
-          cat foo/foo.go
+          git diff master...HEAD --name-only --no-renames
 
           echo "Repository setup successful."
 
