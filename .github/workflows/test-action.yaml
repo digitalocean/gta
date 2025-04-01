@@ -60,22 +60,11 @@ jobs:
 
           echo "Repository setup successful."
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.24'
-
       - name: Run GTA Action
         id: gta
         uses: ./
         with:
-          base: 'origin/main'
-          include: 'example_prefix'
-          merge: 'true'
-          json: 'true'
-          buildable_only: 'false'
-          changed_files: 'example_changed_files.txt'
-          tags: 'example_tag'
+          json: true
 
       - name: Validate output
         run: |
