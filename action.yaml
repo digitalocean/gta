@@ -42,11 +42,6 @@ runs:
       with:
         go-version: '1.24'
 
-    - name: Change to the repo path
-      shell: bash
-      run: |
-        cd "${{ inputs.repo_path }}"
-
     - name: Install Go package
       shell: bash
       # todo nickyd: update to current stable version tag
