@@ -65,10 +65,10 @@ runs:
         fi
 
         gta \
-          -base "${{ inputs.base }}" \
+          -base "${{ inputs.base }}"
 
         changed_packages=$(gta \
-          -base "${{ inputs.base }}") \
+          -base "${{ inputs.base }}")
 
         echo "changed packages:"
         echo "${changed_packages}"
