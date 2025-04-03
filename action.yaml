@@ -40,7 +40,7 @@ outputs:
     value: ${{ steps.gta.outputs.dirty_packages }}
   any_dirty:
     description: 'This value will be "true" if at least one dirty package was found, "false" otherwise'
-    value: ${{ steps.gta.outputs.dirty_packages }}
+    value: ${{ steps.gta.outputs.any_dirty }}
 
 runs:
   using: "composite"
