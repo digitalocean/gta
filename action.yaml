@@ -60,16 +60,37 @@ runs:
 
         pwd
 
-        changedFilesFlag=""
-        if [[ -n "${{ inputs.changed_files }}" ]]; then
-          changedFilesFlag="-changed-files ${{ inputs.changed_files }}"
+        flags=""
+
+        if [[ -n "${{ inputs.base }}" ]]; then
+          flags="${flags} -base ${{ inputs.base }}"
         fi
 
-        gta \
-          -base "${{ inputs.base }}"
+        if [[ -n "${{ inputs.include }}" ]]; then
+          flags="${flags} -include ${{ inputs.include }}"
+        fi
 
-        changed_packages=$(gta \
-          -base "${{ inputs.base }}")
+        if [[ "${{ inputs.merge }}" == "true" ]]; then
+          flags="${flags} -merge"
+        fi
+
+        if [[ "${{ inputs.json }}" == "true" ]]; then
+          flags="${flags} -json"
+        fi
+
+        if [[ "${{ inputs.buildable_only }}" == "false" ]]; then
+          flags="${flags} -buildable-only=false"
+        fi
+
+        if [[ -n "${{ inputs.changed_files }}" ]]; then
+          flags="${flags} -changed-files ${{ inputs.changed_files }}"
+        fi
+
+        if [[ -n "${{ inputs.tags }}" ]]; then
+          flags="${flags} -tags ${{ inputs.tags }}"
+        fi
+
+        changed_packages=$(gta $flags)
 
         echo "changed packages:"
         echo "${changed_packages}"
