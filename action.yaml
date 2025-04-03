@@ -35,9 +35,12 @@ inputs:
     default: ''
 
 outputs:
-  changed_packages:
-    description: 'A newline-delimited list of packages that have deviated from the given base'
-    value: ${{ steps.gta.outputs.changed_packages }}
+  dirty_packages:
+    description: 'A list of packages that have deviated from the given base, either due changes within them or within their dependencies'
+    value: ${{ steps.gta.outputs.dirty_packages }}
+  any_dirty:
+    description: 'This value will be "true" if at least one dirty package was found, "false" otherwise'
+    value: ${{ steps.gta.outputs.dirty_packages }}
 
 runs:
   using: "composite"
@@ -92,11 +95,17 @@ runs:
           flags="${flags} -tags=${{ inputs.tags }}"
         fi
 
-        changed_packages=$(gta $flags)
+        dirty_packages=$(gta $flags)
 
-        echo "changed packages:"
-        echo "${changed_packages}"
-        echo "changed_packages=${changed_packages}" >> $GITHUB_OUTPUT
+        echo "dirty packages:"
+        echo "${dirty_packages}"
+        echo "dirty_packages=${dirty_packages}" >> $GITHUB_OUTPUT
+
+        if [[ -n "${dirty_packages}" ]]; then
+          echo "any_dirty=true" >> $GITHUB_OUTPUT
+        else
+          echo "any_dirty=false" >> $GITHUB_OUTPUT
+        fi
 
 branding:
   icon: 'package'
