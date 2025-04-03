@@ -52,8 +52,7 @@ runs:
 
     - name: Install Go package
       shell: bash
-      # todo nickyd: update to current stable version tag
-      run: go install github.com/digitalocean/gta/cmd/gta@latest
+      run: go install github.com/digitalocean/gta/cmd/gta@v0
 
     - name: Run GTA
       shell: bash
