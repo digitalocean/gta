@@ -37,6 +37,7 @@ inputs:
 outputs:
   changed_packages:
     description: 'A newline-delimited list of packages that have deviated from the given base'
+    value: ${{ steps.gta.outputs.changed_packages }}
 
 runs:
   using: "composite"
@@ -53,6 +54,7 @@ runs:
 
     - name: Run GTA
       shell: bash
+      id: gta
       run: |
         cd "${{ inputs.repo_path }}"
 
