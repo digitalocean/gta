@@ -70,16 +70,16 @@ runs:
           flags="${flags} -include ${{ inputs.include }}"
         fi
 
-        if [[ "${{ inputs.merge }}" == "true" ]]; then
-          flags="${flags} -merge"
+        if [[ -n "${{ inputs.merge }}" ]]; then
+          flags="${flags} -merge ${{ inputs.merge }}"
         fi
 
-        if [[ "${{ inputs.json }}" == "true" ]]; then
-          flags="${flags} -json"
+        if [[ -n "${{ inputs.json }}" ]]; then
+          flags="${flags} -json ${{ inputs.json }}"
         fi
 
-        if [[ "${{ inputs.buildable_only }}" == "false" ]]; then
-          flags="${flags} -buildable-only=false"
+        if [[ -n "${{ inputs.buildable_only }}" ]]; then
+          flags="${flags} -buildable-only ${{ inputs.buildable_only }}"
         fi
 
         if [[ -n "${{ inputs.changed_files }}" ]]; then
