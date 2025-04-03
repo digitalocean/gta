@@ -56,8 +56,6 @@ jobs:
 
           git commit -m "update pkg foo"
 
-          git diff master...HEAD --name-only --no-renames
-
           echo "Repository setup successful."
 
       - name: Run GTA Action
@@ -69,5 +67,12 @@ jobs:
 
       - name: Validate output
         run: |
-          echo "Changed packages:"
-          echo "${{ steps.gta.outputs.changed_packages }}"
+          expected="gta.test/foo gta.test/fooclient gta.test/fooclientclient"
+          actual="${{ steps.gta.outputs.changed_packages }}"
+          if [ "$actual" != "$expected" ]; then
+            echo "Error: Changed packages do not match expected."
+            echo "Expected: $expected"
+            echo "Actual: $actual"
+            exit 1
+          fi
+          echo "Validation successful: $actual"
