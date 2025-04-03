@@ -68,13 +68,13 @@ runs:
           flags="${flags} -base ${{ inputs.base }}"
         fi
 
-        # if [[ -n "${{ inputs.include }}" ]]; then
-        #   flags="${flags} -include ${{ inputs.include }}"
-        # fi
+        if [[ -n "${{ inputs.include }}" ]]; then
+          flags="${flags} -include ${{ inputs.include }}"
+        fi
 
-        # if [[ -n "${{ inputs.merge }}" ]]; then
-        #   flags="${flags} -merge ${{ inputs.merge }}"
-        # fi
+        if [[ -n "${{ inputs.merge }}" ]]; then
+          flags="${flags} -merge ${{ inputs.merge }}"
+        fi
 
         # if [[ -n "${{ inputs.json }}" ]]; then
         #   flags="${flags} -json ${{ inputs.json }}"
