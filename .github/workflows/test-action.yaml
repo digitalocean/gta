@@ -68,7 +68,7 @@ jobs:
       - name: Validate output
         run: |
           expected="gta.test/foo gta.test/fooclient gta.test/fooclientclient"
-          actual="${{ steps.gta.outputs.dirty_packages }}"
+          actual="${{ steps.gta.outputs.changed_packages }}"
           if [ "$actual" != "$expected" ]; then
             echo "Error: Changed packages do not match expected."
             echo "Expected: $expected"
@@ -76,8 +76,8 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ steps.gta.outputs.any_dirty }}" != "true" ]; then
-            echo "Error: any_dirty should be true"
+          if [ "${{ steps.gta.outputs.any_changed }}" != "true" ]; then
+            echo "Error: any_changed should be true"
             exit 1
           fi
 
