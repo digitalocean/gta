@@ -34,6 +34,10 @@ inputs:
     required: false
     default: ''
 
+outputs:
+  changed_packages:
+    description: 'A newline-delimited list of packages that have deviated from the given base'
+
 runs:
   using: "composite"
   steps:
@@ -68,10 +72,6 @@ runs:
         echo "changed packages:"
         echo "${changed_packages}"
         echo "changed_packages=${changed_packages}" >> $GITHUB_OUTPUT
-
-outputs:
-  changed_packages:
-    description: 'A newline-delimited list of packages that have deviated from the given base'
 
 branding:
   icon: 'package'
