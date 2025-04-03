@@ -65,31 +65,31 @@ runs:
         flags=""
 
         if [[ -n "${{ inputs.base }}" ]]; then
-          flags="${flags} -base ${{ inputs.base }}"
+          flags="${flags} -base=${{ inputs.base }}"
         fi
 
         if [[ -n "${{ inputs.include }}" ]]; then
-          flags="${flags} -include ${{ inputs.include }}"
+          flags="${flags} -include=${{ inputs.include }}"
         fi
 
-        # if [[ -n "${{ inputs.merge }}" ]]; then
-        #   flags="${flags} -merge ${{ inputs.merge }}"
-        # fi
+        if [[ -n "${{ inputs.merge }}" ]]; then
+          flags="${flags} -merge=${{ inputs.merge }}"
+        fi
 
         if [[ -n "${{ inputs.json }}" ]]; then
-          flags="${flags} -json ${{ inputs.json }}"
+          flags="${flags} -json=${{ inputs.json }}"
         fi
 
         if [[ -n "${{ inputs.buildable_only }}" ]]; then
-          flags="${flags} -buildable-only ${{ inputs.buildable_only }}"
+          flags="${flags} -buildable-only=${{ inputs.buildable_only }}"
         fi
 
         if [[ -n "${{ inputs.changed_files }}" ]]; then
-          flags="${flags} -changed-files ${{ inputs.changed_files }}"
+          flags="${flags} -changed-files=${{ inputs.changed_files }}"
         fi
 
         if [[ -n "${{ inputs.tags }}" ]]; then
-          flags="${flags} -tags ${{ inputs.tags }}"
+          flags="${flags} -tags=${{ inputs.tags }}"
         fi
 
         changed_packages=$(gta $flags)
