@@ -22,7 +22,6 @@ import (
 	"syscall"
 
 	"github.com/digitalocean/gta"
-
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -35,6 +34,7 @@ func main() {
 	flagBuildableOnly := flag.Bool("buildable-only", true, "keep buildable changed packages only")
 	flagChangedFiles := flag.String("changed-files", "", "path to a file containing a newline separated list of files that have changed")
 	flagTags := flag.String("tags", "", "a list of build tags to consider")
+	flagHeadToHead := flag.Bool("h2h", false, "diff using the HEAD of the base branch and the HEAD of the current branch")
 
 	flag.Parse()
 
@@ -44,6 +44,14 @@ func main() {
 
 	if *flagMerge && len(*flagChangedFiles) > 0 {
 		log.Fatal("changed files must not be provided when using the latest merge commit")
+	}
+
+	if *flagMerge && *flagHeadToHead {
+		log.Fatal("-merge and -h2h cannot be used together")
+	}
+
+	if *flagHeadToHead && len(*flagChangedFiles) > 0 {
+		log.Fatal("-changed-files and -h2h cannot be used together")
 	}
 
 	var tags []string
@@ -61,6 +69,7 @@ func main() {
 		gitDifferOptions := []gta.GitDifferOption{
 			gta.SetBaseBranch(*flagBase),
 			gta.SetUseMergeCommit(*flagMerge),
+			gta.SetUseHeadToHead(*flagHeadToHead),
 		}
 		options = append(options, gta.SetDiffer(gta.NewGitDiffer(gitDifferOptions...)))
 	} else {
