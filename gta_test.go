@@ -841,6 +841,10 @@ func (w *packageContextTestWrapper) isLocalPackage(importPath string) bool {
 	return w.pc.isLocalPackage(importPath)
 }
 
+func (w *packageContextTestWrapper) LocalImportersOf(modulePaths []string) []string {
+	return w.pc.LocalImportersOf(modulePaths)
+}
+
 func TestChangedPackages_ExternalPackageSkipped(t *testing.T) {
 	// The reverse graph has an external package as a dependent of "C".
 	// PackageFromImport will fail for "external/pkg" since it's not in
@@ -1358,5 +1362,321 @@ func TestSetRootsOption(t *testing.T) {
 	}
 	if len(g.roots) != 1 || g.roots[0] != root {
 		t.Errorf("roots = %v, want [%q]", g.roots, root)
+	}
+}
+
+// testBaseFileReaderDiffer is a testDiffer that also implements BaseFileReader.
+type testBaseFileReaderDiffer struct {
+	testDiffer
+	baseFiles map[string][]byte
+}
+
+func (t *testBaseFileReaderDiffer) ReadBaseFile(relativePath string) ([]byte, error) {
+	data, ok := t.baseFiles[relativePath]
+	if !ok {
+		return nil, fmt.Errorf("file %s not found at base", relativePath)
+	}
+	return data, nil
+}
+
+func TestMarkedPackages_GoModChange_PreciseDetection(t *testing.T) {
+	// When go.mod changes and a BaseFileReader is available, only the local
+	// packages that import the changed dependency should be marked.
+	tmpDir := t.TempDir()
+
+	// Write new go.mod with a version bump for ext/foo
+	newGoMod := "module local\ngo 1.21\nrequire ext/foo v1.1.0\nrequire ext/bar v1.0.0\n"
+	os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(newGoMod), 0644)
+
+	oldGoMod := "module local\ngo 1.21\nrequire ext/foo v1.0.0\nrequire ext/bar v1.0.0\n"
+
+	difr := &testBaseFileReaderDiffer{
+		testDiffer: testDiffer{
+			diff: map[string]Directory{
+				tmpDir: {Exists: true, Files: []string{"go.mod"}},
+			},
+		},
+		baseFiles: map[string][]byte{
+			"go.mod": []byte(oldGoMod),
+		},
+	}
+
+	// Set up packager where local/a imports ext/foo, local/b does not
+	pc := &packageContext{
+		modulesNamesByDir: map[string]string{tmpDir: "local"},
+		forward: map[string]map[string]struct{}{
+			"local/a": {"ext/foo/sub": {}},
+			"local/b": {"ext/bar": {}},
+			"local/c": {},
+		},
+		reverse: map[string]map[string]struct{}{
+			"ext/foo/sub": {"local/a": {}},
+			"ext/bar":     {"local/b": {}},
+		},
+		testOnlyReverse:     map[string]map[string]struct{}{},
+		packages:            make(map[string]struct{}),
+		packagesByEmbedFile: make(map[string][]string),
+	}
+
+	wrapper := &packageContextTestWrapper{
+		pc: pc,
+		dirs2Imports: map[string]string{
+			tmpDir: "local",
+		},
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(wrapper))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gta.roots = []string{tmpDir}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() error: %v", err)
+	}
+
+	// Only local/a should be marked (it imports ext/foo)
+	// local/b and local/c should NOT be marked
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+
+	want := []string{"local/a"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
+func TestMarkedPackages_GoModChange_FallbackToNuclear(t *testing.T) {
+	// When the differ does NOT implement BaseFileReader and no base options
+	// are set, fall back to the nuclear option (mark all packages).
+	tmpDir := t.TempDir()
+	os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module local\ngo 1.21\n"), 0644)
+
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			tmpDir: {Exists: true, Files: []string{"go.mod"}},
+		},
+	}
+
+	graph := &Graph{
+		graph: map[string]map[string]bool{
+			"A": {"B": true},
+		},
+	}
+
+	pkgr := &testPackager{
+		dirs2Imports: map[string]string{
+			tmpDir: "local",
+			"dirA": "A",
+			"dirB": "B",
+		},
+		graph: graph,
+		errs:  make(map[string]error),
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(pkgr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gta.roots = []string{tmpDir}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() error: %v", err)
+	}
+
+	// With nuclear option, A and B should be marked (from graph)
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+
+	// Nuclear marks everything in the graph
+	if len(got) < 2 {
+		t.Errorf("expected nuclear option to mark multiple packages, got %v", got)
+	}
+}
+
+func TestMarkedPackages_GoSumChange_TransitiveDep(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Only go.sum changed (go.mod unchanged)
+	newGoSum := "ext/foo v1.1.0 h1:newhash\next/foo v1.1.0/go.mod h1:modhash\n"
+	os.WriteFile(filepath.Join(tmpDir, "go.sum"), []byte(newGoSum), 0644)
+
+	oldGoSum := "ext/foo v1.0.0 h1:oldhash\next/foo v1.0.0/go.mod h1:modhash\n"
+
+	difr := &testBaseFileReaderDiffer{
+		testDiffer: testDiffer{
+			diff: map[string]Directory{
+				tmpDir: {Exists: true, Files: []string{"go.sum"}},
+			},
+		},
+		baseFiles: map[string][]byte{
+			"go.sum": []byte(oldGoSum),
+		},
+	}
+
+	pc := &packageContext{
+		modulesNamesByDir: map[string]string{tmpDir: "local"},
+		forward: map[string]map[string]struct{}{
+			"local/a": {"ext/foo": {}},
+			"local/b": {"ext/bar": {}},
+		},
+		reverse: map[string]map[string]struct{}{
+			"ext/foo": {"local/a": {}},
+			"ext/bar": {"local/b": {}},
+		},
+		testOnlyReverse:     map[string]map[string]struct{}{},
+		packages:            make(map[string]struct{}),
+		packagesByEmbedFile: make(map[string][]string),
+	}
+
+	wrapper := &packageContextTestWrapper{
+		pc: pc,
+		dirs2Imports: map[string]string{
+			tmpDir: "local",
+		},
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(wrapper))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gta.roots = []string{tmpDir}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() error: %v", err)
+	}
+
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+
+	// Only local/a should be marked (imports ext/foo which changed in go.sum)
+	want := []string{"local/a"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
+func TestMarkedPackages_GoWorkChange_StillNuclear(t *testing.T) {
+	// go.work changes should still use the nuclear option
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			"dir": {Exists: true, Files: []string{"go.work"}},
+		},
+	}
+
+	graph := &Graph{
+		graph: map[string]map[string]bool{
+			"A": {"B": true},
+			"B": {},
+		},
+	}
+
+	pkgr := &testPackager{
+		dirs2Imports: map[string]string{
+			"dirA": "A",
+			"dirB": "B",
+		},
+		graph: graph,
+		errs:  make(map[string]error),
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(pkgr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() error: %v", err)
+	}
+
+	// go.work change should mark all packages in the graph (nuclear)
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+
+	want := []string{"A", "B"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
+func TestMarkedPackages_BaseGoModOption(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Write old and new go.mod files
+	oldGoMod := "module local\ngo 1.21\nrequire ext/foo v1.0.0\nrequire ext/bar v1.0.0\n"
+	newGoMod := "module local\ngo 1.21\nrequire ext/foo v1.1.0\nrequire ext/bar v1.0.0\n"
+
+	oldGoModPath := filepath.Join(tmpDir, "old_go.mod")
+	os.WriteFile(oldGoModPath, []byte(oldGoMod), 0644)
+
+	modDir := filepath.Join(tmpDir, "module")
+	os.MkdirAll(modDir, 0755)
+	os.WriteFile(filepath.Join(modDir, "go.mod"), []byte(newGoMod), 0644)
+
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			modDir: {Exists: true, Files: []string{"go.mod"}},
+		},
+	}
+
+	pc := &packageContext{
+		modulesNamesByDir: map[string]string{modDir: "local"},
+		forward: map[string]map[string]struct{}{
+			"local/a": {"ext/foo": {}},
+			"local/b": {"ext/bar": {}},
+		},
+		reverse: map[string]map[string]struct{}{
+			"ext/foo": {"local/a": {}},
+			"ext/bar": {"local/b": {}},
+		},
+		testOnlyReverse:     map[string]map[string]struct{}{},
+		packages:            make(map[string]struct{}),
+		packagesByEmbedFile: make(map[string][]string),
+	}
+
+	wrapper := &packageContextTestWrapper{
+		pc: pc,
+		dirs2Imports: map[string]string{
+			modDir: "local",
+		},
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(wrapper), SetBaseGoMod(oldGoModPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gta.roots = []string{modDir}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() error: %v", err)
+	}
+
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+
+	// Only local/a should be marked (imports ext/foo which changed)
+	want := []string{"local/a"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
 	}
 }
