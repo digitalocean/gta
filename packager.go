@@ -416,6 +416,43 @@ func normalizeImportPath(pkg *packages.Package) string {
 	return importPath
 }
 
+// isLocalPackage returns true if the import path belongs to a main
+// (local/workspace) module.
+func (p *packageContext) isLocalPackage(importPath string) bool {
+	for _, modPath := range p.modulesNamesByDir {
+		if importPath == modPath || strings.HasPrefix(importPath, modPath+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// LocalImportersOf returns the import paths of local packages that
+// import any package from the given module paths.
+func (p *packageContext) LocalImportersOf(modulePaths []string) []string {
+	moduleSet := make(map[string]struct{}, len(modulePaths))
+	for _, mp := range modulePaths {
+		moduleSet[mp] = struct{}{}
+	}
+
+	var importers []string
+	for pkgPath, imports := range p.forward {
+		if !p.isLocalPackage(pkgPath) {
+			continue
+		}
+		for dep := range imports {
+			for mp := range moduleSet {
+				if dep == mp || strings.HasPrefix(dep, mp+"/") {
+					importers = append(importers, pkgPath)
+					goto nextPkg
+				}
+			}
+		}
+	nextPkg:
+	}
+	return importers
+}
+
 func stripVendor(importPath string) string {
 	if os.Getenv("GO111MODULE") == "off" {
 		return importPath
