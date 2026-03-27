@@ -411,6 +411,7 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 		// Traverse dependents. When includeTransitiveTestDeps is true, test-only
 		// edges are traversed the same as production edges (replicating the old
 		// behavior where all imports were in a single reverse graph).
+		checker, hasChecker := g.packager.(localPackageChecker)
 		var traverse func(node string)
 		traverse = func(node string) {
 			if marked[node] {
@@ -420,12 +421,19 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 
 			if edges, ok := graph.graph[node]; ok {
 				for edge := range edges {
+					// Skip non-local dependents if the packager supports the check
+					if hasChecker && !checker.isLocalPackage(edge) {
+						continue
+					}
 					traverse(edge)
 				}
 			}
 			if g.includeTransitiveTestDeps {
 				if edges, ok := testOnlyGraph.graph[node]; ok {
 					for edge := range edges {
+						if hasChecker && !checker.isLocalPackage(edge) {
+							continue
+						}
 						traverse(edge)
 					}
 				}
@@ -453,6 +461,12 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 	}
 
 	return paths, nil
+}
+
+// localPackageChecker is satisfied by packageContext but not required
+// by custom Packager implementations.
+type localPackageChecker interface {
+	isLocalPackage(string) bool
 }
 
 var errImportPathNotFound = errors.New("could not find import path")

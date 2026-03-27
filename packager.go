@@ -423,8 +423,12 @@ func normalizeImportPath(pkg *packages.Package) string {
 }
 
 // isLocalPackage returns true if the import path belongs to a main
-// (local/workspace) module.
+// (local/workspace) module. In GOPATH mode (no modules), all packages
+// are considered local.
 func (p *packageContext) isLocalPackage(importPath string) bool {
+	if len(p.modulesNamesByDir) == 0 {
+		return true
+	}
 	for _, modPath := range p.modulesNamesByDir {
 		if importPath == modPath || strings.HasPrefix(importPath, modPath+"/") {
 			return true

@@ -725,6 +725,122 @@ func TestGTA_ChangedPackages(t *testing.T) {
 	})
 }
 
+func TestMarkedPackages_SkipsExternalDependents(t *testing.T) {
+	// When the packager implements localPackageChecker (as packageContext does),
+	// the traverse function in markedPackages should skip non-local edges.
+	// We use packageContext with a crafted graph to test this.
+	pc := &packageContext{
+		modulesNamesByDir: map[string]string{"/repo": "local"},
+		forward: map[string]map[string]struct{}{
+			"local/a": {"local/b": {}},
+			"local/b": {},
+		},
+		reverse: map[string]map[string]struct{}{
+			"local/b": {"local/a": {}, "external/pkg": {}},
+		},
+		testOnlyReverse: map[string]map[string]struct{}{},
+		packages:        make(map[string]struct{}),
+	}
+
+	// Verify packageContext satisfies localPackageChecker
+	if _, ok := interface{}(pc).(localPackageChecker); !ok {
+		t.Fatal("packageContext should implement localPackageChecker")
+	}
+
+	// Build the graph from reverse
+	graph, err := pc.DependentGraph()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up differ that marks local/b as changed
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			"dirB": {Exists: true, Files: []string{"b.go"}},
+		},
+	}
+
+	// We need PackageFromDir to work for "dirB" → "local/b"
+	// Create a wrapper that delegates dir lookups but uses pc for graph/checker
+	wrapper := &packageContextTestWrapper{
+		pc: pc,
+		dirs2Imports: map[string]string{
+			"dirB": "local/b",
+		},
+	}
+	_ = graph // used by wrapper internally
+
+	gta, err := New(SetDiffer(difr), SetPackager(wrapper))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() returned unexpected error: %v", err)
+	}
+
+	// external/pkg should NOT appear in AllChanges
+	for _, p := range pkgs.AllChanges {
+		if p.ImportPath == "external/pkg" {
+			t.Error("external/pkg should not appear in AllChanges")
+		}
+	}
+
+	// local/a and local/b should be present
+	want := []string{"local/a", "local/b"}
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
+// packageContextTestWrapper wraps a packageContext for testing, providing
+// both Packager and localPackageChecker interfaces.
+type packageContextTestWrapper struct {
+	pc           *packageContext
+	dirs2Imports map[string]string
+}
+
+func (w *packageContextTestWrapper) PackageFromDir(dir string) (*Package, error) {
+	ip, ok := w.dirs2Imports[dir]
+	if !ok {
+		return nil, fmt.Errorf("dir not found: %s", dir)
+	}
+	return &Package{ImportPath: ip}, nil
+}
+
+func (w *packageContextTestWrapper) PackageFromEmptyDir(dir string) (*Package, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (w *packageContextTestWrapper) PackageFromImport(importPath string) (*Package, error) {
+	if w.pc.isLocalPackage(importPath) {
+		return &Package{ImportPath: importPath, Dir: importPath}, nil
+	}
+	return nil, fmt.Errorf("package not found: %s", importPath)
+}
+
+func (w *packageContextTestWrapper) DependentGraph() (*Graph, error) {
+	return w.pc.DependentGraph()
+}
+
+func (w *packageContextTestWrapper) TestOnlyDependentGraph() (*Graph, error) {
+	return w.pc.TestOnlyDependentGraph()
+}
+
+func (w *packageContextTestWrapper) EmbeddedBy(_ string) []string {
+	return nil
+}
+
+func (w *packageContextTestWrapper) isLocalPackage(importPath string) bool {
+	return w.pc.isLocalPackage(importPath)
+}
+
 func TestChangedPackages_ExternalPackageSkipped(t *testing.T) {
 	// The reverse graph has an external package as a dependent of "C".
 	// PackageFromImport will fail for "external/pkg" since it's not in

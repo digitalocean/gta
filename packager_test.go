@@ -58,10 +58,10 @@ func TestIsLocalPackage(t *testing.T) {
 			want:              true,
 		},
 		{
-			name:              "empty modulesNamesByDir",
+			name:              "empty modulesNamesByDir (GOPATH mode) treats all as local",
 			modulesNamesByDir: map[string]string{},
 			importPath:        "mymod/pkg",
-			want:              false,
+			want:              true,
 		},
 	}
 
