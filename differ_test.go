@@ -16,6 +16,24 @@ import (
 // check to make sure Git implements the Differ interface.
 var _ Differ = &differ{}
 
+func TestBaseFileReaderInterface(t *testing.T) {
+	// NewGitDiffer returns a differ that satisfies BaseFileReader
+	gitDiffer := NewGitDiffer()
+	if _, ok := gitDiffer.(BaseFileReader); !ok {
+		t.Error("git differ should implement BaseFileReader")
+	}
+
+	// NewFileDiffer returns a differ that satisfies BaseFileReader structurally
+	// but its ReadBaseFile returns an error since there's no git backing.
+	fileDiffer := NewFileDiffer(nil)
+	if reader, ok := fileDiffer.(BaseFileReader); ok {
+		_, err := reader.ReadBaseFile("go.mod")
+		if err == nil {
+			t.Error("file differ's ReadBaseFile should return an error")
+		}
+	}
+}
+
 func Test_diffFileDirectories(t *testing.T) {
 	var tests = []struct {
 		desc string

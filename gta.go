@@ -93,6 +93,8 @@ type GTA struct {
 	tags                      []string
 	roots                     []string
 	includeTransitiveTestDeps bool
+	baseGoMod                 string
+	baseGoSum                 string
 }
 
 // New returns a new GTA with various options passed to New. Options will be
