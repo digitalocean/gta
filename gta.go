@@ -196,7 +196,9 @@ func (g *GTA) ChangedPackages() (*Packages, error) {
 			if check {
 				pkg2, err := packageFromImport(path)
 				if err != nil {
-					return nil, err
+					// Package cannot be resolved -- likely an external
+					// dependency not in the local module. Skip it.
+					continue
 				}
 				pkg = pkg2
 			}

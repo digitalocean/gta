@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -722,6 +723,68 @@ func TestGTA_ChangedPackages(t *testing.T) {
 
 		testChangedPackages(t, diff, nil, want)
 	})
+}
+
+func TestChangedPackages_ExternalPackageSkipped(t *testing.T) {
+	// The reverse graph has an external package as a dependent of "C".
+	// PackageFromImport will fail for "external/pkg" since it's not in
+	// dirs2Imports. ChangedPackages should succeed and skip the external package.
+	graph := &Graph{
+		graph: map[string]map[string]bool{
+			"C": {
+				"B":            true,
+				"external/pkg": true,
+			},
+			"B": {
+				"A": true,
+			},
+		},
+	}
+
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			"dirC": {Exists: true, Files: []string{"c.go"}},
+		},
+	}
+
+	pkgr := &testPackager{
+		dirs2Imports: map[string]string{
+			"dirA": "A",
+			"dirB": "B",
+			"dirC": "C",
+			// "external/pkg" deliberately absent
+		},
+		graph: graph,
+		errs:  make(map[string]error),
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(pkgr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatalf("ChangedPackages() returned unexpected error: %v", err)
+	}
+
+	// external/pkg should NOT be in AllChanges
+	for _, p := range pkgs.AllChanges {
+		if p.ImportPath == "external/pkg" {
+			t.Error("external/pkg should not appear in AllChanges")
+		}
+	}
+
+	// A, B, C should be present
+	want := []string{"A", "B", "C"}
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
 }
 
 func TestGTA_Prefix(t *testing.T) {
