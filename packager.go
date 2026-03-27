@@ -305,6 +305,12 @@ func dependencyGraph(cfg *packages.Config, patterns []string) (moduleNamesByDir 
 
 		seen[pkg.ID] = struct{}{}
 
+		// Skip packages with load errors (e.g., unresolvable external deps).
+		// The module info has already been recorded above.
+		if len(pkg.Errors) > 0 {
+			return
+		}
+
 		// Ignore packages that do not have any Go files that satisfy the build
 		// constraints.
 		if len(pkg.GoFiles) == 0 {

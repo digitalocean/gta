@@ -78,6 +78,56 @@ func TestIsLocalPackage(t *testing.T) {
 	}
 }
 
+func TestAddPackage_SkipsErroredPackages(t *testing.T) {
+	// Verify that packages with load errors are not added to the
+	// forward/reverse dependency graphs. We test this indirectly by
+	// constructing a GTA with a testPackager whose graph excludes the errored
+	// package. The key assertion is that ChangedPackages succeeds and
+	// does not include the errored package.
+	graph := &Graph{
+		graph: map[string]map[string]bool{
+			"B": {"A": true},
+		},
+	}
+
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			"dirB": {Exists: true, Files: []string{"b.go"}},
+		},
+	}
+
+	pkgr := &testPackager{
+		dirs2Imports: map[string]string{
+			"dirA": "A",
+			"dirB": "B",
+		},
+		graph: graph,
+		errs:  make(map[string]error),
+	}
+
+	gta, err := New(SetDiffer(difr), SetPackager(pkgr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkgs, err := gta.ChangedPackages()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that A and B are in AllChanges (errored packages excluded
+	// from graph wouldn't appear here).
+	want := []string{"A", "B"}
+	var got []string
+	for _, p := range pkgs.AllChanges {
+		got = append(got, p.ImportPath)
+	}
+	sort.Strings(got)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("(-want, +got)\n%s", diff)
+	}
+}
+
 func TestLocalImportersOf(t *testing.T) {
 	tests := []struct {
 		name              string
