@@ -635,3 +635,29 @@ func moduleroot() (string, error) {
 
 	return strings.TrimSpace(string(b)), nil
 }
+
+// workspaceroot returns the directory containing the active go.work file, and
+// true, when Go workspace mode is active. Returns ("", false) otherwise.
+//
+// Errors from exec.Command are treated as "not in workspace mode" rather than
+// propagated: a failure here means the go toolchain is unavailable, which will
+// also cause moduleroot() and packages.Load to fail immediately after.
+func workspaceroot() (string, bool) {
+	cmd := exec.Command("go", "env", "GOWORK")
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", false
+	}
+	return parseGOWORK(string(b))
+}
+
+// parseGOWORK interprets the raw output of `go env GOWORK`. Returns the
+// directory containing the go.work file and true when workspace mode is active;
+// returns ("", false) when output is empty or "off".
+func parseGOWORK(output string) (string, bool) {
+	gowork := strings.TrimSpace(output)
+	if gowork == "" || gowork == "off" {
+		return "", false
+	}
+	return filepath.Dir(gowork), true
+}

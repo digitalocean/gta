@@ -1082,3 +1082,102 @@ func TestDeepestUnignoredDir(t *testing.T) {
 		}
 	}
 }
+
+func TestParseGOWORK(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		input   string
+		wantDir string
+		wantOK  bool
+	}{
+		"active workspace": {
+			input:   "/home/user/project/go.work\n",
+			wantDir: "/home/user/project",
+			wantOK:  true,
+		},
+		"explicitly disabled": {
+			input:   "off\n",
+			wantDir: "",
+			wantOK:  false,
+		},
+		"empty output": {
+			input:   "",
+			wantDir: "",
+			wantOK:  false,
+		},
+		"whitespace only": {
+			input:   "   \n",
+			wantDir: "",
+			wantOK:  false,
+		},
+		"workspace at filesystem root": {
+			input:   "/go.work\n",
+			wantDir: "/",
+			wantOK:  true,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			gotDir, gotOK := parseGOWORK(tc.input)
+			if gotDir != tc.wantDir || gotOK != tc.wantOK {
+				t.Errorf("parseGOWORK(%q) = (%q, %v), want (%q, %v)",
+					tc.input, gotDir, gotOK, tc.wantDir, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestWorkspacerootWithRealFile(t *testing.T) {
+	dir := t.TempDir()
+	gowork := filepath.Join(dir, "go.work")
+	t.Setenv("GOWORK", gowork)
+
+	gotDir, gotOK := workspaceroot()
+	if !gotOK {
+		t.Fatal("workspaceroot() returned false, want true")
+	}
+	if gotDir != dir {
+		t.Errorf("workspaceroot() = %q, want %q", gotDir, dir)
+	}
+}
+
+func TestWorkspacerootNoWorkspace(t *testing.T) {
+	t.Setenv("GOWORK", "")
+
+	gotDir, gotOK := workspaceroot()
+	if gotOK {
+		t.Errorf("workspaceroot() = (%q, true), want (\"\", false)", gotDir)
+	}
+}
+
+func TestWorkspacerootDisabled(t *testing.T) {
+	t.Setenv("GOWORK", "off")
+
+	gotDir, gotOK := workspaceroot()
+	if gotOK {
+		t.Errorf("workspaceroot() = (%q, true), want (\"\", false)", gotDir)
+	}
+}
+
+func TestSetRootsOption(t *testing.T) {
+	t.Parallel()
+
+	root := "/fake/workspace/root"
+	g, err := New(
+		SetRoots(root),
+		SetDiffer(&testDiffer{}),
+		SetPackager(&testPackager{
+			dirs2Imports: map[string]string{},
+			graph:        &Graph{graph: map[string]map[string]bool{}},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+	if len(g.roots) != 1 || g.roots[0] != root {
+		t.Errorf("roots = %v, want [%q]", g.roots, root)
+	}
+}
