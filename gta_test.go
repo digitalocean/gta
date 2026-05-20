@@ -1130,35 +1130,35 @@ func TestParseGOWORK(t *testing.T) {
 	}
 }
 
-func TestWorkspacerootWithRealFile(t *testing.T) {
-	dir := t.TempDir()
-	gowork := filepath.Join(dir, "go.work")
-	t.Setenv("GOWORK", gowork)
+func TestWorkspaceroot(t *testing.T) {
+	tmpDir := t.TempDir()
 
-	gotDir, gotOK := workspaceroot()
-	if !gotOK {
-		t.Fatal("workspaceroot() returned false, want true")
+	cases := map[string]struct {
+		gowork  string
+		wantDir string
+		wantOK  bool
+	}{
+		"active workspace": {
+			gowork:  filepath.Join(tmpDir, "go.work"),
+			wantDir: tmpDir,
+			wantOK:  true,
+		},
+		"disabled":     {gowork: "off"},
+		"no workspace": {gowork: ""},
 	}
-	if gotDir != dir {
-		t.Errorf("workspaceroot() = %q, want %q", gotDir, dir)
-	}
-}
 
-func TestWorkspacerootNoWorkspace(t *testing.T) {
-	t.Setenv("GOWORK", "")
-
-	gotDir, gotOK := workspaceroot()
-	if gotOK {
-		t.Errorf("workspaceroot() = (%q, true), want (\"\", false)", gotDir)
-	}
-}
-
-func TestWorkspacerootDisabled(t *testing.T) {
-	t.Setenv("GOWORK", "off")
-
-	gotDir, gotOK := workspaceroot()
-	if gotOK {
-		t.Errorf("workspaceroot() = (%q, true), want (\"\", false)", gotDir)
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("GOWORK", tc.gowork)
+			gotDir, gotOK, err := workspaceroot()
+			if err != nil {
+				t.Fatalf("workspaceroot() error: %v", err)
+			}
+			if gotDir != tc.wantDir || gotOK != tc.wantOK {
+				t.Errorf("workspaceroot() = (%q, %v), want (%q, %v)",
+					gotDir, gotOK, tc.wantDir, tc.wantOK)
+			}
+		})
 	}
 }
 
