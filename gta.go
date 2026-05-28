@@ -604,12 +604,22 @@ func toplevel() ([]string, error) {
 		return gopaths()
 	}
 
-	root, err := moduleroot()
+	// In workspace mode, go list -m -f '{{.Dir}}' outputs one line per workspace
+	// module, producing a corrupt multi-line string when TrimSpace'd. Use
+	// go env GOWORK instead, which always returns a single path.
+	root, ok, err := workspaceroot()
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return []string{root}, nil
+	}
+
+	root, err = moduleroot()
 	if err != nil {
 		return nil, err
 	}
 	return []string{root}, nil
-
 }
 
 func gopaths() ([]string, error) {
@@ -634,4 +644,26 @@ func moduleroot() (string, error) {
 	}
 
 	return strings.TrimSpace(string(b)), nil
+}
+
+// workspaceroot returns the directory containing the active go.work file and
+// true when Go workspace mode is active.
+func workspaceroot() (string, bool, error) {
+	cmd := exec.Command("go", "env", "GOWORK")
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", false, fmt.Errorf("go env GOWORK: %w", err)
+	}
+	dir, ok := parseGOWORK(string(b))
+	return dir, ok, nil
+}
+
+// parseGOWORK interprets the raw output of `go env GOWORK`.
+// "off" indicates workspace mode was explicitly disabled via GOWORK=off.
+func parseGOWORK(output string) (string, bool) {
+	gowork := strings.TrimSpace(output)
+	if gowork == "" || gowork == "off" {
+		return "", false
+	}
+	return filepath.Dir(gowork), true
 }

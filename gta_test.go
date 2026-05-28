@@ -1082,3 +1082,102 @@ func TestDeepestUnignoredDir(t *testing.T) {
 		}
 	}
 }
+
+func TestParseGOWORK(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		input   string
+		wantDir string
+		wantOK  bool
+	}{
+		"active workspace": {
+			input:   "/home/user/project/go.work\n",
+			wantDir: "/home/user/project",
+			wantOK:  true,
+		},
+		"explicitly disabled": {
+			input:   "off\n",
+			wantDir: "",
+			wantOK:  false,
+		},
+		"empty output": {
+			input:   "",
+			wantDir: "",
+			wantOK:  false,
+		},
+		"whitespace only": {
+			input:   "   \n",
+			wantDir: "",
+			wantOK:  false,
+		},
+		"workspace at filesystem root": {
+			input:   "/go.work\n",
+			wantDir: "/",
+			wantOK:  true,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			gotDir, gotOK := parseGOWORK(tc.input)
+			if gotDir != tc.wantDir || gotOK != tc.wantOK {
+				t.Errorf("parseGOWORK(%q) = (%q, %v), want (%q, %v)",
+					tc.input, gotDir, gotOK, tc.wantDir, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestWorkspaceroot(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cases := map[string]struct {
+		gowork  string
+		wantDir string
+		wantOK  bool
+	}{
+		"active workspace": {
+			gowork:  filepath.Join(tmpDir, "go.work"),
+			wantDir: tmpDir,
+			wantOK:  true,
+		},
+		"disabled":     {gowork: "off"},
+		"no workspace": {gowork: ""},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("GOWORK", tc.gowork)
+			gotDir, gotOK, err := workspaceroot()
+			if err != nil {
+				t.Fatalf("workspaceroot() error: %v", err)
+			}
+			if gotDir != tc.wantDir || gotOK != tc.wantOK {
+				t.Errorf("workspaceroot() = (%q, %v), want (%q, %v)",
+					gotDir, gotOK, tc.wantDir, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestSetRootsOption(t *testing.T) {
+	t.Parallel()
+
+	root := "/fake/workspace/root"
+	g, err := New(
+		SetRoots(root),
+		SetDiffer(&testDiffer{}),
+		SetPackager(&testPackager{
+			dirs2Imports: map[string]string{},
+			graph:        &Graph{graph: map[string]map[string]bool{}},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+	if len(g.roots) != 1 || g.roots[0] != root {
+		t.Errorf("roots = %v, want [%q]", g.roots, root)
+	}
+}

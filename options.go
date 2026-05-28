@@ -51,3 +51,12 @@ func SetIncludeTransitiveTestDeps(include bool) Option {
 		return nil
 	}
 }
+
+// SetRoots sets the root directories for the GTA. When provided, toplevel() is
+// not called and the supplied roots are used directly.
+func SetRoots(roots ...string) Option {
+	return func(g *GTA) error {
+		g.roots = roots
+		return nil
+	}
+}
