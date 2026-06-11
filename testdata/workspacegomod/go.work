@@ -1,0 +1,13 @@
+go 1.21
+
+use (
+	./modA
+	./modB
+)
+
+// Replace the "external" dependency with a local directory so that
+// packages.Load resolves it offline. Placing the replace here (rather than
+// in the module go.mod files) keeps the go.mod files minimal: diffGoMod only
+// inspects require/replace directives of go.mod files, and the scenario under
+// test depends on the require directives alone.
+replace example.test/dep => ./depsrc
