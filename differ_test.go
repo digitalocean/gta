@@ -27,7 +27,7 @@ func TestBaseFileReaderInterface(t *testing.T) {
 	// but its ReadBaseFile returns an error since there's no git backing.
 	fileDiffer := NewFileDiffer(nil)
 	if reader, ok := fileDiffer.(BaseFileReader); ok {
-		_, err := reader.ReadBaseFile("go.mod")
+		_, err := reader.ReadBaseFile("/some/abs/path/go.mod")
 		if err == nil {
 			t.Error("file differ's ReadBaseFile should return an error")
 		}

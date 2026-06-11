@@ -31,8 +31,10 @@ type Differ interface {
 }
 
 // BaseFileReader provides access to file content at the base branch/commit.
+// The argument is an absolute path inside the repository; implementations
+// resolve it against the repository root.
 type BaseFileReader interface {
-	ReadBaseFile(relativePath string) ([]byte, error)
+	ReadBaseFile(absPath string) ([]byte, error)
 }
 
 // GitDifferOption is an option function used to modify a git differ
@@ -90,11 +92,11 @@ type differ struct {
 
 // ReadBaseFile reads a file at the git merge-base. It satisfies the
 // BaseFileReader interface when the differ was created via NewGitDiffer.
-func (d *differ) ReadBaseFile(relativePath string) ([]byte, error) {
+func (d *differ) ReadBaseFile(absPath string) ([]byte, error) {
 	if d.readBaseFile == nil {
 		return nil, fmt.Errorf("BaseFileReader not available (not a git differ)")
 	}
-	return d.readBaseFile(relativePath)
+	return d.readBaseFile(absPath)
 }
 
 // git implements the Differ interface using a git version control method.
@@ -321,19 +323,26 @@ type fileDiffer struct {
 	changedFiles map[string]struct{}
 }
 
-// readBaseFile reads a file at the base ref using git show.
-// diff() must have been called first to populate root and baseRef.
-func (g *git) readBaseFile(relativePath string) ([]byte, error) {
-	// Ensure diff has been called to populate baseRef
+// readBaseFile reads a file at the base ref using git show. The absolute
+// path is resolved against the repository toplevel, which diff() populates.
+func (g *git) readBaseFile(absPath string) ([]byte, error) {
+	// Ensure diff has been called to populate root and baseRef
 	if _, err := g.diff(); err != nil {
 		return nil, err
 	}
 	if g.baseRef == "" {
 		return nil, fmt.Errorf("no base ref available")
 	}
-	out, err := execWithStderr(exec.Command("git", "-C", g.root, "show", g.baseRef+":"+relativePath))
+	rel, err := filepath.Rel(g.root, absPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading %s at %s: %w", relativePath, g.baseRef, err)
+		return nil, fmt.Errorf("resolving %q against repository root %q: %w", absPath, g.root, err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("path %q is outside repository %q", absPath, g.root)
+	}
+	out, err := execWithStderr(exec.Command("git", "-C", g.root, "show", g.baseRef+":"+filepath.ToSlash(rel)))
+	if err != nil {
+		return nil, fmt.Errorf("reading %s at %s: %w", rel, g.baseRef, err)
 	}
 	return out, nil
 }

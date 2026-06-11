@@ -1366,15 +1366,22 @@ func TestSetRootsOption(t *testing.T) {
 }
 
 // testBaseFileReaderDiffer is a testDiffer that also implements BaseFileReader.
+// baseFiles is keyed by repo-root-relative path; root plays the role of the
+// git toplevel.
 type testBaseFileReaderDiffer struct {
 	testDiffer
+	root      string
 	baseFiles map[string][]byte
 }
 
-func (t *testBaseFileReaderDiffer) ReadBaseFile(relativePath string) ([]byte, error) {
-	data, ok := t.baseFiles[relativePath]
+func (t *testBaseFileReaderDiffer) ReadBaseFile(absPath string) ([]byte, error) {
+	rel, err := filepath.Rel(t.root, absPath)
+	if err != nil {
+		return nil, err
+	}
+	data, ok := t.baseFiles[rel]
 	if !ok {
-		return nil, fmt.Errorf("file %s not found at base", relativePath)
+		return nil, fmt.Errorf("file %s not found at base", rel)
 	}
 	return data, nil
 }
@@ -1396,6 +1403,7 @@ func TestMarkedPackages_GoModChange_PreciseDetection(t *testing.T) {
 				tmpDir: {Exists: true, Files: []string{"go.mod"}},
 			},
 		},
+		root: tmpDir,
 		baseFiles: map[string][]byte{
 			"go.mod": []byte(oldGoMod),
 		},
@@ -1517,6 +1525,7 @@ func TestMarkedPackages_GoSumChange_TransitiveDep(t *testing.T) {
 				tmpDir: {Exists: true, Files: []string{"go.sum"}},
 			},
 		},
+		root: tmpDir,
 		baseFiles: map[string][]byte{
 			"go.sum": []byte(oldGoSum),
 		},

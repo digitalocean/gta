@@ -304,8 +304,7 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 			// Strategy 1: Use BaseFileReader (git differ) to get old content
 			if baseReader, ok := g.differ.(BaseFileReader); ok {
 				if hasGoMod {
-					relPath := relativeModFilePath(abs, g.roots, "go.mod")
-					oldData, err := baseReader.ReadBaseFile(relPath)
+					oldData, err := baseReader.ReadBaseFile(filepath.Join(abs, "go.mod"))
 					if err == nil && oldData != nil {
 						newData, _ := os.ReadFile(filepath.Join(abs, "go.mod"))
 						if changes, err := diffGoMod(oldData, newData); err == nil {
@@ -317,8 +316,7 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 					}
 				}
 				if hasGoSum {
-					relPath := relativeModFilePath(abs, g.roots, "go.sum")
-					oldData, err := baseReader.ReadBaseFile(relPath)
+					oldData, err := baseReader.ReadBaseFile(filepath.Join(abs, "go.sum"))
 					if err == nil && oldData != nil {
 						newData, _ := os.ReadFile(filepath.Join(abs, "go.sum"))
 						sumPaths := diffGoSum(oldData, newData)
@@ -602,21 +600,6 @@ func dedup(sl []string) []string {
 		result = append(result, s)
 	}
 	return result
-}
-
-// relativeModFilePath computes the git-relative path to a module file
-// (go.mod or go.sum) given the absolute directory and the repository roots.
-func relativeModFilePath(absDir string, roots []string, filename string) string {
-	for _, root := range roots {
-		if strings.HasPrefix(absDir, root) {
-			rel, err := filepath.Rel(root, absDir)
-			if err == nil {
-				return filepath.Join(rel, filename)
-			}
-		}
-	}
-	// Fallback: just use the filename
-	return filename
 }
 
 var errImportPathNotFound = errors.New("could not find import path")

@@ -10,34 +10,39 @@ import (
 )
 
 // testBaseReaderDiffer is a Differ that also implements BaseFileReader,
-// simulating the git differ's ReadBaseFile. The real implementation runs
-//
-//	git -C <repo toplevel> show <baseRef>:<relativePath>
-//
-// (see (*git).readBaseFile in differ.go), so the relativePath it receives is
-// always interpreted relative to the git repository root. baseFiles is
-// therefore keyed by repo-root-relative paths. requested records every path
-// the code under test asks for, so a failure can show *which* file was
-// consulted, not just that detection failed.
+// simulating the git differ's ReadBaseFile. The real implementation receives
+// an absolute path and resolves it against the git repository toplevel
+// (see (*git).readBaseFile in differ.go). root plays the role of the git
+// toplevel; baseFiles is keyed by repo-root-relative paths. requested records
+// every absolute path the code under test passes in, so a failure can show
+// *which* file was consulted, not just that detection failed.
 type testBaseReaderDiffer struct {
 	testDiffer
+	root      string
 	baseFiles map[string][]byte
 	requested []string
 }
 
 var _ BaseFileReader = &testBaseReaderDiffer{}
 
-func (d *testBaseReaderDiffer) ReadBaseFile(relativePath string) ([]byte, error) {
-	d.requested = append(d.requested, relativePath)
-	b, ok := d.baseFiles[relativePath]
+func (d *testBaseReaderDiffer) ReadBaseFile(absPath string) ([]byte, error) {
+	d.requested = append(d.requested, absPath)
+	rel, err := filepath.Rel(d.root, absPath)
+	if err != nil {
+		return nil, err
+	}
+	b, ok := d.baseFiles[rel]
 	if !ok {
-		return nil, fmt.Errorf("path %q does not exist at base ref", relativePath)
+		return nil, fmt.Errorf("path %q does not exist at base ref", rel)
 	}
 	return b, nil
 }
 
-// TestChangedPackages_WorkspaceGoModPreciseDiff demonstrates a false negative
-// in the precise go.mod diff analysis when running in Go workspace mode.
+// TestChangedPackages_WorkspaceGoModPreciseDiff is a regression test for the
+// path-resolution contract: ReadBaseFile receives absolute paths and the differ
+// resolves them against the repository root; under the fork's multi-root
+// semantics this scenario produced a false negative (root go.mod silently
+// diffed against modB's new go.mod).
 //
 // Scenario (fixture: testdata/workspacegomod):
 //
@@ -54,44 +59,38 @@ func (d *testBaseReaderDiffer) ReadBaseFile(relativePath string) ([]byte, error)
 // modB/go.mod: example.test/dep v1.0.0 -> v1.1.0. Because modB's package
 // imports example.test/dep, GTA must mark workspace.gomod/modB as changed.
 //
-// Why the current code misses it:
+// Historical 5-step failure mechanism (before path-resolution was moved into
+// the differ):
 //
-//  1. In workspace mode, workspaceroots() sets g.roots to the workspace
-//     module directories taken from the go.work use directives:
-//     [<root>/modA, <root>/modB]. The repository root itself is not in
-//     g.roots unless go.work happens to contain "use ." ordered before the
-//     module that changed.
+//  1. In workspace mode, workspaceroots() set g.roots to the workspace module
+//     directories taken from go.work use directives: [<root>/modA, <root>/modB].
+//     The repository root itself was not in g.roots unless go.work happened to
+//     contain "use ." ordered before the module that changed.
 //
-//  2. markedPackages() sees modB/go.mod in the diff and calls
-//     relativeModFilePath(<root>/modB, g.roots, "go.mod") to compute the
-//     path to pass to BaseFileReader.ReadBaseFile. The first root that
-//     prefix-matches <root>/modB is <root>/modB itself, so the function
-//     returns "go.mod" -- a path relative to the *module* directory.
+//  2. markedPackages() saw modB/go.mod in the diff and called
+//     relativeModFilePath(<root>/modB, g.roots, "go.mod") to compute the path
+//     to pass to BaseFileReader.ReadBaseFile. The first root that
+//     prefix-matched <root>/modB was <root>/modB itself, so the function
+//     returned "go.mod" -- a path relative to the *module* directory.
 //
-//  3. ReadBaseFile resolves paths relative to the *git repository root*
-//     (git show <base>:go.mod). Since the repo root contains its own go.mod
-//     (the tooling module), the read SUCCEEDS but returns the wrong file:
+//  3. ReadBaseFile resolved paths relative to the *git repository root*
+//     (git show <base>:go.mod). Since the repo root contained its own go.mod
+//     (the tooling module), the read SUCCEEDED but returned the wrong file:
 //     the root go.mod instead of modB/go.mod.
 //
-//  4. diffGoMod then compares the base-ref ROOT go.mod against the new
-//     modB/go.mod. diffGoMod only inspects require/replace directives, so
-//     the differing module lines are invisible to it. The root module
-//     already requires example.test/dep v1.1.0 -- the very version modB just
-//     bumped to, a routine "catch up to the version the rest of the repo
-//     uses" situation in a monorepo. The requires match, the diff comes back
-//     empty, and preciseDetection is reported true with zero changed module
-//     paths.
+//  4. diffGoMod compared the base-ref ROOT go.mod against the new modB/go.mod.
+//     diffGoMod only inspects require/replace directives, so the differing
+//     module lines were invisible to it. The root module already required
+//     example.test/dep v1.1.0 -- the very version modB just bumped to, a
+//     routine "catch up to the version the rest of the repo uses" situation in
+//     a monorepo. The requires matched, the diff came back empty, and
+//     preciseDetection was reported true with zero changed module paths.
 //
 //  5. With preciseDetection == true and no changed module paths, neither the
-//     precise branch nor the nuclear fallback marks anything. modB's diff
-//     contains no .go files, so the directory is then skipped entirely.
-//     Result: ChangedPackages reports nothing -- a false negative for a
-//     dependency change that affects workspace.gomod/modB.
-//
-// The test asserts the CORRECT behavior (workspace.gomod/modB is reported),
-// so it fails on the current code, demonstrating the bug. Note the exact
-// equality assertion also rules out passing via the nuclear fallback, which
-// would mark modA as well.
+//     precise branch nor the nuclear fallback marked anything. modB's diff
+//     contained no .go files, so the directory was then skipped entirely.
+//     Result: ChangedPackages reported nothing -- a false negative for a
+//     dependency change that affected workspace.gomod/modB.
 func TestChangedPackages_WorkspaceGoModPreciseDiff(t *testing.T) {
 	origDir, err := os.Getwd()
 	if err != nil {
@@ -131,6 +130,7 @@ require example.test/dep v1.0.0
 				modBDir: {Exists: true, Files: []string{"go.mod"}},
 			},
 		},
+		root: wsDir,
 		baseFiles: map[string][]byte{
 			// Keyed by git-repo-root-relative path, as git show would see it.
 			"go.mod":      rootGoModAtBase,
