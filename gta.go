@@ -115,7 +115,7 @@ func New(opts ...Option) (*GTA, error) {
 	if gta.roots == nil {
 		roots, err := toplevel()
 		if err != nil {
-			return nil, fmt.Errorf("could not get top level directory")
+			return nil, fmt.Errorf("could not get top level directory: %w", err)
 		}
 		gta.roots = roots
 	}
