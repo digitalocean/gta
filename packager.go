@@ -217,6 +217,8 @@ func resolveLocal(pkg *Package, dir string, modulesByDir map[string]string) {
 		return
 	}
 
+	dir = canonicalDir(dir) // normalize before comparing to canonical module dirs
+
 	importPath := pkg.ImportPath
 
 	var mruPrefix string
@@ -300,7 +302,7 @@ func dependencyGraph(cfg *packages.Config, patterns []string) (moduleNamesByDir 
 		}
 
 		if pkg.Module != nil && pkg.Module.Main {
-			moduleNamesByDir[pkg.Module.Dir] = pkg.Module.Path
+			moduleNamesByDir[canonicalDir(pkg.Module.Dir)] = pkg.Module.Path
 		}
 
 		seen[pkg.ID] = struct{}{}
@@ -475,4 +477,28 @@ func stripVendor(importPath string) string {
 	}
 
 	return importPath
+}
+
+// canonicalDir resolves symlinks in dir to match the form packages.Load
+// reports for Module.Dir (the go tool resolves symlinks via EvalSymlinks).
+// Equality/prefix comparisons against module dirs are otherwise fragile on
+// systems where the repo path differs from its resolved form (e.g. macOS
+// /tmp -> /private/tmp, container bind mounts, automounts).
+//
+// If dir does not exist (e.g. a deleted package directory), the deepest
+// existing ancestor is resolved and the remainder re-appended, so prefix and
+// equality comparisons still line up with resolved module dirs.
+func canonicalDir(dir string) string {
+	if dir == "" {
+		return dir
+	}
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return resolved
+	}
+	parent := filepath.Dir(dir)
+	if parent == dir {
+		// reached the filesystem root; cannot resolve further
+		return dir
+	}
+	return filepath.Join(canonicalDir(parent), filepath.Base(dir))
 }

@@ -193,6 +193,9 @@ func (g *git) diff() (map[string]struct{}, error) {
 				return nil, err
 			}
 			root := strings.TrimSpace(string(out))
+			if resolved, err := filepath.EvalSymlinks(root); err == nil {
+				root = resolved
+			}
 			g.root = root
 			// get the revision from which HEAD was branched from g.baseBranch.
 			parent1, err := g.branchPointOf("HEAD")

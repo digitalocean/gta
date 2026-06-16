@@ -118,6 +118,9 @@ func New(opts ...Option) (*GTA, error) {
 			return nil, fmt.Errorf("could not get top level directory: %w", err)
 		}
 		gta.roots = roots
+		for i, r := range gta.roots {
+			gta.roots[i] = canonicalDir(r)
+		}
 	}
 
 	// set the default packager after applying option so that the default
@@ -374,6 +377,15 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 				continue
 			}
 		}
+
+		// Canonicalize abs so that symlink-resolved module dirs (from
+		// packages.Load) and symlink-resolved roots (from toplevel) match the
+		// incoming path even when the differ supplies a path that passes through
+		// a symlink (e.g. macOS /tmp -> /private/tmp, container bind mounts).
+		// File operations above (go.mod/go.sum reads via ReadBaseFile, os.ReadFile)
+		// intentionally used the raw path so that the differ's root-relative
+		// resolution still works; from this point forward we need canonical form.
+		abs = canonicalDir(abs)
 
 		// Add packages that embed the files of dir.
 		for _, f := range dir.Files {
