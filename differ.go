@@ -30,6 +30,13 @@ type Differ interface {
 	DiffFiles() (map[string]bool, error)
 }
 
+// BaseFileReader provides access to file content at the base branch/commit.
+// The argument is an absolute path inside the repository; implementations
+// resolve it against the repository root.
+type BaseFileReader interface {
+	ReadBaseFile(absPath string) ([]byte, error)
+}
+
 // GitDifferOption is an option function used to modify a git differ
 type GitDifferOption func(*git)
 
@@ -59,7 +66,8 @@ func NewGitDiffer(opts ...GitDifferOption) Differ {
 	}
 
 	return &differ{
-		diff: g.diff,
+		diff:         g.diff,
+		readBaseFile: g.readBaseFile,
 	}
 }
 
@@ -78,7 +86,17 @@ func NewFileDiffer(files []string) Differ {
 }
 
 type differ struct {
-	diff func() (map[string]struct{}, error)
+	diff         func() (map[string]struct{}, error)
+	readBaseFile func(string) ([]byte, error)
+}
+
+// ReadBaseFile reads a file at the git merge-base. It satisfies the
+// BaseFileReader interface when the differ was created via NewGitDiffer.
+func (d *differ) ReadBaseFile(absPath string) ([]byte, error) {
+	if d.readBaseFile == nil {
+		return nil, fmt.Errorf("BaseFileReader not available (not a git differ)")
+	}
+	return d.readBaseFile(absPath)
 }
 
 // git implements the Differ interface using a git version control method.
@@ -88,6 +106,9 @@ type git struct {
 	onceDiff       sync.Once
 	changedFiles   map[string]struct{}
 	diffErr        error
+	// root and baseRef are populated during diff() for use by readBaseFile.
+	root    string
+	baseRef string
 }
 
 // A Directory describes changes to a directory and its contents.
@@ -172,6 +193,10 @@ func (g *git) diff() (map[string]struct{}, error) {
 				return nil, err
 			}
 			root := strings.TrimSpace(string(out))
+			if resolved, err := filepath.EvalSymlinks(root); err == nil {
+				root = resolved
+			}
+			g.root = root
 			// get the revision from which HEAD was branched from g.baseBranch.
 			parent1, err := g.branchPointOf("HEAD")
 			if err != nil {
@@ -186,6 +211,8 @@ func (g *git) diff() (map[string]struct{}, error) {
 			if parent1 == "" {
 				parent1 = g.baseBranch
 			}
+
+			g.baseRef = parent1
 
 			rightwardParents := []string{"HEAD"}
 			if g.useMergeCommit {
@@ -297,6 +324,30 @@ func (g *git) branchPointOf(branch string) (string, error) {
 
 type fileDiffer struct {
 	changedFiles map[string]struct{}
+}
+
+// readBaseFile reads a file at the base ref using git show. The absolute
+// path is resolved against the repository toplevel, which diff() populates.
+func (g *git) readBaseFile(absPath string) ([]byte, error) {
+	// Ensure diff has been called to populate root and baseRef
+	if _, err := g.diff(); err != nil {
+		return nil, err
+	}
+	if g.baseRef == "" {
+		return nil, fmt.Errorf("no base ref available")
+	}
+	rel, err := filepath.Rel(g.root, absPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolving %q against repository root %q: %w", absPath, g.root, err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("path %q is outside repository %q", absPath, g.root)
+	}
+	out, err := execWithStderr(exec.Command("git", "-C", g.root, "show", g.baseRef+":"+filepath.ToSlash(rel)))
+	if err != nil {
+		return nil, fmt.Errorf("reading %s at %s: %w", rel, g.baseRef, err)
+	}
+	return out, nil
 }
 
 func execWithStderr(c *exec.Cmd) (out []byte, err error) {

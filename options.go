@@ -60,3 +60,21 @@ func SetRoots(roots ...string) Option {
 		return nil
 	}
 }
+
+// SetBaseGoMod provides old go.mod content for dependency diff analysis
+// when using a file differ (no git access).
+func SetBaseGoMod(path string) Option {
+	return func(g *GTA) error {
+		g.baseGoMod = path
+		return nil
+	}
+}
+
+// SetBaseGoSum provides old go.sum content for dependency diff analysis
+// when using a file differ (no git access).
+func SetBaseGoSum(path string) Option {
+	return func(g *GTA) error {
+		g.baseGoSum = path
+		return nil
+	}
+}
