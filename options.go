@@ -6,6 +6,8 @@ in the LICENSE file.
 */
 package gta
 
+import "fmt"
+
 // Option is an option function used to modify a GTA.
 type Option func(*GTA) error
 
@@ -57,6 +59,22 @@ func SetIncludeTransitiveTestDeps(include bool) Option {
 func SetRoots(roots ...string) Option {
 	return func(g *GTA) error {
 		g.roots = roots
+		return nil
+	}
+}
+
+// SetTraversalDepth limits how many hops from a directly changed package the
+// reverse-dependency traversal will follow. A depth of 1 marks only the
+// immediate dependents of each changed package; a depth of 2 also marks their
+// dependents, and so on. The default value of 0 means unlimited — the entire
+// reverse-dependency graph is traversed, which is the historical behaviour.
+// Negative values are not allowed and will cause New to return an error.
+func SetTraversalDepth(depth int) Option {
+	return func(g *GTA) error {
+		if depth < 0 {
+			return fmt.Errorf("traversal depth must be non-negative, got %d", depth)
+		}
+		g.traversalDepth = depth
 		return nil
 	}
 }

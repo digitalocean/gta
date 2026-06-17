@@ -93,6 +93,7 @@ type GTA struct {
 	tags                      []string
 	roots                     []string
 	includeTransitiveTestDeps bool
+	traversalDepth            int
 }
 
 // New returns a new GTA with various options passed to New. Options will be
@@ -409,27 +410,33 @@ func (g *GTA) markedPackages() (map[string]map[string]bool, error) {
 		// Traverse dependents. When includeTransitiveTestDeps is true, test-only
 		// edges are traversed the same as production edges (replicating the old
 		// behavior where all imports were in a single reverse graph).
-		var traverse func(node string)
-		traverse = func(node string) {
+		// When traversalDepth > 0, traversal stops after that many hops from the
+		// changed package; 0 means unlimited.
+		var traverse func(node string, currentDepth int)
+		traverse = func(node string, currentDepth int) {
 			if marked[node] {
 				return
 			}
 			marked[node] = true
 
+			if g.traversalDepth > 0 && currentDepth >= g.traversalDepth {
+				return
+			}
+
 			if edges, ok := graph.graph[node]; ok {
 				for edge := range edges {
-					traverse(edge)
+					traverse(edge, currentDepth+1)
 				}
 			}
 			if g.includeTransitiveTestDeps {
 				if edges, ok := testOnlyGraph.graph[node]; ok {
 					for edge := range edges {
-						traverse(edge)
+						traverse(edge, currentDepth+1)
 					}
 				}
 			}
 		}
-		traverse(change)
+		traverse(change, 0)
 
 		// When not traversing transitive test deps, still mark direct test-only
 		// dependents (their tests need re-running, but we don't traverse further).

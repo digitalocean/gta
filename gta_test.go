@@ -143,6 +143,110 @@ func TestGTA(t *testing.T) {
 	}
 }
 
+func TestGTA_TraversalDepth(t *testing.T) {
+	// Dependency chain: A depends on B depends on C depends on D
+	// (in reverse-graph terms: D→C→B→A)
+	// dirD is dirty.
+	difr := &testDiffer{
+		diff: map[string]Directory{
+			"dirD": {Exists: true, Files: []string{"d.go"}},
+		},
+	}
+
+	graph := &Graph{
+		graph: map[string]map[string]bool{
+			"D": {"C": true},
+			"C": {"B": true},
+			"B": {"A": true},
+		},
+	}
+
+	pkgr := &testPackager{
+		dirs2Imports: map[string]string{
+			"dirA": "A",
+			"dirB": "B",
+			"dirC": "C",
+			"dirD": "D",
+		},
+		graph: graph,
+		errs:  make(map[string]error),
+	}
+
+	tests := []struct {
+		name           string
+		traversalDepth int
+		wantAllChanges []Package
+		wantErr        bool
+	}{
+		{
+			name:           "depth 0 (unlimited) traverses full chain",
+			traversalDepth: 0,
+			wantAllChanges: []Package{
+				{ImportPath: "A"},
+				{ImportPath: "B"},
+				{ImportPath: "C"},
+				{ImportPath: "D"},
+			},
+		},
+		{
+			name:           "depth 1 marks only the changed package and its direct dependents",
+			traversalDepth: 1,
+			wantAllChanges: []Package{
+				{ImportPath: "C"},
+				{ImportPath: "D"},
+			},
+		},
+		{
+			name:           "depth 2 marks two hops from the changed package",
+			traversalDepth: 2,
+			wantAllChanges: []Package{
+				{ImportPath: "B"},
+				{ImportPath: "C"},
+				{ImportPath: "D"},
+			},
+		},
+		{
+			name:           "depth 3 marks three hops from the changed package",
+			traversalDepth: 3,
+			wantAllChanges: []Package{
+				{ImportPath: "A"},
+				{ImportPath: "B"},
+				{ImportPath: "C"},
+				{ImportPath: "D"},
+			},
+		},
+		{
+			name:           "negative depth returns an error",
+			traversalDepth: -1,
+			wantErr:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g, err := New(SetDiffer(difr), SetPackager(pkgr), SetTraversalDepth(tt.traversalDepth))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected an error but got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			pkgs, err := g.ChangedPackages()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tt.wantAllChanges, pkgs.AllChanges); diff != "" {
+				t.Errorf("AllChanges (-want, +got)\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestGTA_ChangedPackages(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		// A depends on B depends on C
