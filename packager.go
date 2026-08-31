@@ -377,9 +377,20 @@ func dependencyGraph(cfg *packages.Config, patterns []string) (moduleNamesByDir 
 						testOnlyReverse[importedPath][pkgPath] = struct{}{}
 						continue
 					}
+					// Production imports from for-test variants are already in reverse
+					// from when the main package was processed.
+					continue
 				}
-				// Production imports from for-test variants are already in reverse
-				// from when the main package was processed.
+
+				// No production package exists for this path (directory contains only
+				// *_test.go files). The main package variant was skipped because it
+				// had no GoFiles, so productionImports was never seeded. Treat
+				// for-test imports as test-only dependents so dependency changes
+				// still mark these packages.
+				if _, ok := testOnlyReverse[importedPath]; !ok {
+					testOnlyReverse[importedPath] = make(map[string]struct{})
+				}
+				testOnlyReverse[importedPath][pkgPath] = struct{}{}
 			}
 		}
 	}
