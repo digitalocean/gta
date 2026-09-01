@@ -722,6 +722,40 @@ func TestGTA_ChangedPackages(t *testing.T) {
 
 		testChangedPackages(t, diff, nil, want)
 	})
+
+	// Packages whose directory contains only *_test.go files (no production
+	// .go) still import other packages from those tests. When a dependency
+	// changes, those test-only packages should be marked affected so CI can
+	// compile/run them.
+	//
+	// Test data setup:
+	//   - shareddep: production package
+	//   - shareddepclient: production importer of shareddep
+	//   - testonlydir: directory with only testonlydir_test.go importing shareddep
+	t.Run("change dependency marks packages that contain only test files", func(t *testing.T) {
+		diff := map[string]Directory{
+			"shareddep": {Exists: true, Files: []string{"shareddep.go"}},
+		}
+
+		want := &Packages{
+			Dependencies: map[string][]Package{
+				"shareddep": {
+					{ImportPath: "shareddepclient", Dir: "shareddepclient"},
+					{ImportPath: "testonlydir", Dir: "testonlydir"},
+				},
+			},
+			Changes: []Package{
+				{ImportPath: "shareddep", Dir: "shareddep"},
+			},
+			AllChanges: []Package{
+				{ImportPath: "shareddep", Dir: "shareddep"},
+				{ImportPath: "shareddepclient", Dir: "shareddepclient"},
+				{ImportPath: "testonlydir", Dir: "testonlydir"},
+			},
+		}
+
+		testChangedPackages(t, diff, nil, want)
+	})
 }
 
 func TestGTA_Prefix(t *testing.T) {
